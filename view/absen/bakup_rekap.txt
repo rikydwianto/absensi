@@ -1,0 +1,324 @@
+<script src="<?php echo url('assets/plugins/printarea/') ?>jquery-1.10.2.js" type="text/JavaScript" language="javascript"></script>
+<?php 
+include_once"fungsi/absen-absen.php";
+include_once"fungsi/karyawan.php";
+include_once"fungsi/departemen.php";
+include_once"fungsi/jabatan.php";
+$breadcrumd=$_GET['mn'];
+@$tgllama=($_GET['tgl'] == "" ) ? date("01/m/Y - t/m/Y") : $_GET['tgl'];
+@$tgl=($_GET['tgl'] == "" ) ? date("01/m/Y - t/m/Y") : $_GET['tgl'];
+@$tgl=(explode("-",$tgl));
+$tglawal = (ubah_tanggal(trim($tgl[0])));
+$tglakhir = (ubah_tanggal(trim($tgl[1])));
+$total_range=date_diff(date_create($tglawal),date_create($tglakhir));
+$total_range=$total_range->format("%d") + 1;
+$jumlah_hari=$total_range;
+$b=$tglawal;
+$t=$tglakhir;
+@$hari=explode('-',$b);
+@$hari=$hari[2];
+@$id_jabatan=aman($_GET['jab']);
+function banding_tgl($awal,$akhir){
+	$q=mysql_query("SELECT DATEDIFF('$awal','$akhir') as date_difference");
+	$r=mysql_fetch_array($q);
+	return abs($r['date_difference']) + 1;
+	
+}
+$jumlah_hari =  banding_tgl($tglawal,$tglakhir);
+?>
+<section class="content-header">
+  <h1>
+    Absen
+  </h1>
+  <ol class="breadcrumb">
+    <li><a href="<?php echo url() ?>"><i class="fa fa-dashboard"></i> Home</a></li>
+    <li><a href="<?php echo url('index.php?mn='.$breadcrumd) ?>">Rekap Total Absen</a></li>
+    <li class="active"><?php echo (@$_GET['act']) ?></li>
+  </ol>
+</section>
+
+<!-- Main content -->
+<section class="content">
+	
+  <!-- Default box -->
+  <div class="box">
+		<div class="box-header with-border">
+		  <h3 class="box-title">Rekap Total Tanggal .... sampai .... </h3>
+		</div>
+		<div class="box-body">
+			<div >
+				<a href='<?php echo url_sekarang() ?>' class='btn btn-primary'><i class='fa fa-refresh'></i> Reload </a>
+				<a href='<?php echo url('laporan/rekap_absen_range.php?filter='.$id_jabatan.'&tgl='.$tgllama) ?>' class='btn btn-danger btn-flat'><i class='fa fa-excel-o'></i> Export Dept ini</a>
+				<a href='<?php echo url('laporan/rekap_absen_range.php?tgl='.$tgllama) ?>' class='btn btn-danger btn-flat'><i class='fa fa-excel-o'></i> Export Semua Departemen </a>
+				<a href='#' id='klikprint' class='btn btn-danger btn-flat'><i class='fa fa-print'></i> print</a>
+			</div>
+			<br/>
+			<div>
+				<div class='pull-right'>
+				<form method=get>
+					<input type=hidden value='rekap-total-range' name='mn'/>
+					<select id='dept' name='jab' class='sel1ect2'>
+						<option value=''>Departemen</option>
+						<?php 
+						$Qdep=tampil_departemen();
+						
+						while($rDep=mysql_fetch_object($Qdep))
+						{
+							if($rDep->id_departemen==@$id_jabatan)
+								echo "<option value='$rDep->id_departemen' selected>$rDep->nama_departemen</option>";
+							else
+								echo "<option value='$rDep->id_departemen'>$rDep->nama_departemen</option>";
+							
+						}
+						?>
+					</select>
+					<select  id='jabatan' name='id_jabatan'>
+						<option value=''>-- Jabatan --</option>
+						<?PHP
+						$id_jab_dep=aman($_GET['id_jabatan']);
+						$Qjab=jabatan_departemen(@$id_jabatan);						
+						while($rJab=mysql_fetch_object($Qjab)){
+						if($id_jab_dep==$rJab->id_jabatan)
+							$select="selected";
+						else
+							$select="";
+						echo "<option $select value='$rJab->id_jabatan'>$rJab->nama_jabatan</option>";
+						}
+						?>
+					</select>
+					<input type=text name='tgl' id='reservation' value='<?php echo @$tgllama ?>'  />
+					<input type=submit value='Cari' name='cr'/>
+					</form>
+
+				</div>
+				<br/>
+				<br/>
+				<div class='printarea'>
+				<?php 
+				error_reporting(0);
+				$jab=cari_jabatan($id_jab_dep);
+				$dep=cari_dep($id_jabatan);
+				$hitung_libur_nasional=hitung_libur_nasional($b,$t);
+				?>
+				Nama Departemen : <?php echo @$dep->nama_departemen ?><br/>
+				Jabatan			: <?php echo @$jab->nama_jabatan ?> <br/>
+				Priode	 		: <?php echo tanggal($tglawal) ?> s/d <?php echo tanggal($tglakhir) ?><br/>
+				Total Hari 		: <?php echo $jumlah_hari?>
+								<div class='table-responsive '>
+					<table border=1 class=' table- table-hover' style='width:100%'>
+						<thead>
+							<tr>
+								<th colspan='15'>
+									<center>
+										Rekap Total <?php echo tanggal($tglawal)?> s/d <?php echo tanggal($tglakhir)?> 
+									</center>
+								</th>
+							</tr>
+							<tr >
+								<th rowspan=2><center>No.</center></th>
+								<th rowspan=2><center>Nama </center></th>
+								<th rowspan=2><center>Jabatan</center></th>
+								<th >Total Hari</th>
+								<th rowspan=1>Libur</th>
+								<th rowspan=1>Libur / </th>
+								<th colspan=3><center>Absensi</center></th>
+								<!--<th rowspan=2><center>Telat</center></th>-->
+								<th rowspan=2><center>Lembur <br/>(Jam)</center></th>
+								<th rowspan=2><center>Lembur <br/>(Hari)</center></th>
+								<th colspan=2><center>Total</center></th>
+								<th rowspan=2><center>Keterangan</center></th>
+							</tr>
+							<tr >
+								<th >Kerja</th>
+								<th >Nasional</th>
+								<th >Off</th>
+								<th><center>S</center></th>
+								<th><center>I</center></th>
+								<th><center>A</center></th>
+								<th>Masuk</th>
+								<th>Tidak Masuk</th>
+							</tr>
+						</thead>
+						<tbody>
+						<?php 
+						if(empty($id_jab_dep))
+						{
+							$qtam="";
+						}
+						else
+							$qtam=" and karyawan.id_jabatan='$id_jab_dep' ";
+						$query="select id_karyawan,nik,nama_lengkap,nama_jabatan,datediff(curdate(),tgl_masuk) as lama_kerja,tgl_masuk,kode_departemen,status_karyawan from karyawan,jabatan,departemen where departemen.id_departemen=jabatan.id_departemen 
+						and karyawan.id_jabatan=jabatan.id_jabatan and karyawan.status_karyawan!=5 and departemen.id_departemen='$id_jabatan'  $qtam order by karyawan.id_jabatan,karyawan.tgl_masuk ";
+						$query=mysql_query($query);
+						$jm=0;
+						$no=1;
+						while($Kar=mysql_fetch_array($query))
+						{
+							//JIKA TGL MASUK KURANG DARI TGL AWAL YG DIPILIH
+							if(strtotime($b)<strtotime($Kar['tgl_masuk'])){
+								$tgl_baru=$Kar['tgl_masuk'];
+								$ulang=date_diff(date_create($tgl_baru),date_create($t));
+								$ulang=$ulang->format("%d") + 1;
+								$jumlah_hari = banding_tgl($tgl_baru,$t);
+								$ket="Masuk pada tanggal $tgl_baru";
+							}
+							else
+							{
+								$tgl_baru=$b;
+								$ulang=$jumlah_hari;
+								$ket="";
+							}
+							
+							//JIKA KARYAWAN SPD
+							$cari_spdq=mysql_query("select id_karyawan,tanggal_absen from absen where tanggal_absen between '$tgl_baru' and '$tglakhir' and id_karyawan='$Kar[id_karyawan]' and keterangan_hadir='spd'");
+							@$cari_spd=mysql_fetch_array($cari_spdq);
+							if(mysql_num_rows($cari_spdq))
+							{
+								
+								$tglakhir=$cari_spd['tanggal_absen'];
+								$ulang=date_diff(date_create($tgl_baru),date_create($tglakhir));
+								$ulang=$ulang->format("%d") + 1;
+								$jumlah_hari =  banding_tgl($tglawal,$tglakhir);
+							}
+							
+							
+							$lama_kerja=$Kar['lama_kerja'] ;
+							$idkaryawan=$Kar['id_karyawan'];
+							$tgl_masuk=explode("-",$Kar['tgl_masuk']);
+							$tgl_masuk=$tgl_masuk[2];
+							// if($tgl_masuk[1]==$b && $tgl_masuk[0]==$t){
+								// $tgl_masuk=$tgl_masuk[2];
+								// $jumlah_hari=$lama_kerja;
+							// }
+							// else{
+								$tgl_masuk=1;
+								// $jumlah_hari=$jumlah_hari;
+							// }
+							
+							
+							if($Kar['kode_departemen']!='09'){
+							
+								$lembur_hari=mysql_query("SELECT count(id_karyawan) as total_lembur_hari FROM absen 
+								WHERE tanggal_absen IN (SELECT tanggal_lembur FROM lembur_hari WHERE tanggal_lembur BETWEEN '$tgl_baru' and '$tglakhir')
+								and id_karyawan=$idkaryawan and (keterangan_hadir is null or keterangan_hadir='')
+								") or die(alert_error("Error : ".mysql_error()));
+								$lembur_hari=mysql_fetch_array($lembur_hari);
+								$lembur_hari=$lembur_hari['total_lembur_hari'];
+								
+								
+								
+								
+							}
+							else{
+								$lembur_hari=0;
+							}
+							
+							$libur_nasional=mysql_query("SELECT count(tanggal_libur_nasional) as total_nasional FROM libur_nasional WHERE tanggal_libur_nasional BETWEEN '$tgl_baru' and '$tglakhir' ");
+							$libur_nasional=mysql_fetch_array($libur_nasional);
+							// echoecho $lama_kerja;
+							$hitung_libur_nasional = $libur_nasional['total_nasional'];
+							//pulang/SETENGAH HARI
+							
+							$pulang=hitung_ket_karyawan_range($idkaryawan,'pulang',$b,$t) ;
+							$pulang_libur=hitung_ket_karyawan_range($idkaryawan,'pulang_libur',$b,$t) ;
+								
+								//LIBUR OFF
+								// $total_kerja1 = hitung_jml_karyawan($idkaryawan,$b,$t) - $izin - ($alfa * 2)  - ($pulang / 2)  ;
+								$hitung_jml=array();
+								for($i=0;$i<$ulang;$i++)
+								{
+									$date=date("Y-m-d",strtotime("+$i day", strtotime($tgl_baru)));
+									$tgl_tmb=mysql_query("select id_absen from absen where tanggal_absen='$date' and id_karyawan='$idkaryawan'");
+									$hit=mysql_num_rows($tgl_tmb);
+									if(!$hit){
+										$hitung_jml[]=1;
+									}
+									// else $hitung_jml[]=0;
+									
+								}
+								$sakit=hitung_ket_karyawan_range($idkaryawan,'skd',$b,$t) ;
+								$izin=hitung_ket_karyawan_range($idkaryawan,'izin',$b,$t) ;
+								$alfa=hitung_ket_karyawan_range($idkaryawan,'alfa',$b,$t);
+								$off=hitung_ket_karyawan_range($idkaryawan,'libur',$b,$t);
+								$spd=hitung_ket_karyawan_range($idkaryawan,'spd',$b,$t);
+								$telat = hitung_telat_karyawan($idkaryawan,$b,$t) ;
+								total_lembur_range($idkaryawan,$b,$t) ;
+								$libur=count($hitung_jml) - $hitung_libur_nasional + $lembur_hari + $off  ;
+								$total_kerja = hitung_jml_karyawan_range($idkaryawan,$b,$t) - $izin - ($alfa * 2) - $lembur_hari - $off + $spd ;
+								?>
+							<tr >
+								<td ><?php echo $no; ?></td>
+								<td ><?php echo $Kar['nama_lengkap'] ?>[<?php echo $Kar['nik']?>]</td>
+								<td ><?php echo $Kar['nama_jabatan']?> </td>
+								<td ><?php echo $jumlah_hari ?></td>
+								<td ><?php echo $hitung_libur_nasional ?></td>
+								
+								<td><?php echo $libur + ($pulang_libur / 2); ?></td>
+								<td ><center><?php echo hitung_ket_karyawan_range($idkaryawan,'skd',$b,$t) ?></center></td>
+								<td ><center><?php echo hitung_ket_karyawan_range($idkaryawan,'izin',$b,$t) + ($pulang / 2)?></center></td>
+								<td ><center><?php echo hitung_ket_karyawan_range($idkaryawan,'alfa',$b,$t)?></center></td>
+								<!--<td ><center><?php echo $telat = hitung_telat_karyawan($idkaryawan,$b,$t) ?></center></td>-->
+								<td><?php echo total_lembur_range($idkaryawan,$b,$t) ?></td>
+								<td><?php echo $lembur_hari = $lembur_hari ?> </td>
+								<td><?php echo $total_kerja - ($pulang / 2) - ($pulang_libur / 2)?></td>
+								<td><?php echo $tm =  ($alfa * 2) + $izin + ($pulang / 2) ?></td>
+								
+								<td>
+									<?php 
+									if(mysql_num_rows($cari_spdq))
+									{
+										$ket =  "Berhenti Tanggal ". $cari_spd['tanggal_absen'];
+									}
+									echo $ket;
+									
+									$set=mysql_query("SELECT tanggal_absen,keterangan_hadir FROM absen 
+									WHERE tanggal_absen BETWEEN '$tgl_baru' and '$tglakhir' and id_karyawan=$idkaryawan and (keterangan_hadir ='pulang_libur' or keterangan_hadir ='pulang')") or die(alert_error("Error : ".mysql_error()));
+									while($set_hari=mysql_fetch_array($set)){
+										$cari_set=mysql_query("select * from lembur_hari where tanggal_lembur='$set_hari[tanggal_absen]'");
+										echo mysql_num_rows($cari_set);
+									}
+									?>
+								</td>
+							</tr>
+						<?php 
+						$no++;
+						}
+						?>
+						</tbody>
+					</table>
+					</div>
+				</div>
+			</div>
+		</div>
+    </div>
+
+</section>
+
+<script>
+	
+	
+    function Popup(data) 
+    {
+        var mywindow = window.open('', 'my div', 'height=3300,width=2100');
+        mywindow.document.write('<html><head><title>Rekap Absen</title>');
+        mywindow.document.write('<style>');
+        mywindow.document.write("*{font-size:11px; border-collapse: collapse;}");
+        mywindow.document.write("table, th, td {border: 1px solid black;}");
+        mywindow.document.write('</style>');
+        // mywindow.document.write('<link rel="stylesheet" href="<?php echo url('assets/print.css') ?>" type="text/css" media="print" />');
+        mywindow.document.write('</head><body >');
+        mywindow.document.write(data);
+        mywindow.document.write('</body></html>');
+
+        mywindow.document.close(); // necessary for IE >= 10
+        mywindow.focus(); // necessary for IE >= 10
+
+        mywindow.print();
+        mywindow.close();
+
+        return true;
+    }
+	$("#klikprint").click(function(){
+		Popup($(".printarea").html());
+	});
+</script>

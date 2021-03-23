@@ -1,0 +1,17 @@
+*{
+	font-size:11px;
+	color:black;
+}
+
+table {
+	border-collapse:collapse;
+}
+@media print{
+	table {
+		border-collapse:collapse;
+	}
+	*{
+		font-size:11px;
+		color:black;
+	}
+}
